@@ -1,13 +1,3 @@
-"""
-Cook - Modern configuration management in Python
-
-A simple, powerful configuration management tool focused on:
-- Pure Python configs (no YAML/JSON)
-- Drift detection and monitoring
-- Recording mode to capture manual changes
-- AI integration via MCP
-"""
-
 __version__ = "0.1.0"
 
 from cook.core.resource import Resource, Plan, Action
@@ -15,6 +5,17 @@ from cook.resources.file import File
 from cook.resources.pkg import Package
 from cook.resources.service import Service
 from cook.resources.exec import Exec
+
+"""
+Foundations of Cook Workflows:
+    Resource is a unit of configuration that represents a desired state of a system.
+    Plan is a collection of resources that represent a desired state of a system.
+    Action is a unit of work that can be performed on a resource.
+    File is a unit of configuration that represents a desired state of a file.
+    Package is a unit of configuration that represents a desired state of a package.
+    Service is a unit of configuration that represents a desired state of a service.
+    Exec is a unit of configuration that represents a desired state of an executable.
+"""
 
 __all__ = [
     "Resource",
