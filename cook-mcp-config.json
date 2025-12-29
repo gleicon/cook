@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "cook": {
+      "command": "python",
+      "args": ["-m", "cook.mcp.server"],
+      "env": {},
+      "description": "Cook configuration management MCP server"
+    }
+  }
+}

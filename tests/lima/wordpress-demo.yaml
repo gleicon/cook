@@ -1,0 +1,32 @@
+# Minimal Lima VM for WordPress demo
+vmType: "qemu"
+os: "Linux"
+arch: "aarch64"
+
+images:
+  - location: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-arm64.img"
+    arch: "aarch64"
+
+cpus: 2
+memory: "4GiB"
+disk: "20GiB"
+
+# Forward port 80 for WordPress
+portForwards:
+  - guestPort: 80
+    hostPort: 8080
+
+ssh:
+  loadDotSSHPubKeys: true
+
+# Minimal provisioning - just basics
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux
+      export DEBIAN_FRONTEND=noninteractive
+
+      # Just install Python for Cook
+      apt-get update
+      apt-get install -y python3 python3-pip python3-venv

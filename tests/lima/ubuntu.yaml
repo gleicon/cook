@@ -1,0 +1,72 @@
+# Lima VM configuration for Cook testing
+# Ubuntu 22.04 LTS with Cook dependencies
+
+vmType: "qemu"
+os: "Linux"
+arch: "aarch64"
+
+images:
+  - location: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-arm64.img"
+    arch: "aarch64"
+  - location: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.img"
+    arch: "x86_64"
+
+cpus: 2
+memory: "4GiB"
+disk: "20GiB"
+
+mounts:
+  - location: "~"
+    writable: false
+  - location: "/tmp/lima"
+    writable: true
+
+# Port forwarding (skip SSH port 22)
+portForwards: []
+
+# Provision script to install Cook dependencies
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      # Update package cache
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+
+      # Install Python and dependencies
+      apt-get install -y \
+        python3 \
+        python3-pip \
+        python3-venv \
+        git \
+        curl \
+        sudo
+
+      # Install system packages for testing
+      apt-get install -y \
+        nginx \
+        mysql-server \
+        postgresql \
+        postgresql-contrib
+
+      # Clean up
+      apt-get clean
+      rm -rf /var/lib/apt/lists/*
+
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      # Create test directory
+      mkdir -p /tmp/cook-tests
+
+      echo "Cook test VM provisioned successfully"
+      echo "Python version: $(python3 --version)"
+      echo "Pip version: $(pip3 --version)"
+
+# SSH
+ssh:
+  loadDotSSHPubKeys: true
