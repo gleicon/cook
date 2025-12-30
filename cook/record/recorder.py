@@ -4,23 +4,26 @@ Interactive terminal recorder for capturing manual server changes.
 Uses PTY wrapper to capture commands and filesystem watcher for file changes.
 """
 
+import json
 import os
-import sys
 import pty
 import select
+import sys
 import termios
 import tty
-import json
-import hashlib
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass, field, asdict
+from typing import List, Optional
+
+from cook.logging import get_cook_logger
+
+logger = get_cook_logger(__name__)
 
 
 @dataclass
 class CommandEvent:
     """Recorded shell command."""
+
     timestamp: str
     command: str
     cwd: str
@@ -29,6 +32,7 @@ class CommandEvent:
 @dataclass
 class FileChangeEvent:
     """Recorded file system change."""
+
     timestamp: str
     path: str
     operation: str  # 'created', 'modified', 'deleted'
@@ -41,6 +45,7 @@ class FileChangeEvent:
 @dataclass
 class Recording:
     """Complete recording session."""
+
     start_time: str
     end_time: Optional[str] = None
     commands: List[CommandEvent] = field(default_factory=list)
@@ -69,11 +74,11 @@ class TerminalRecorder:
             shell: Shell to use (default: $SHELL or /bin/bash)
         """
         if shell is None:
-            shell = os.environ.get('SHELL', '/bin/bash')
+            shell = os.environ.get("SHELL", "/bin/bash")
 
-        print(f"Recording session started. Type 'exit' to stop.")
-        print(f"Working directory: {os.getcwd()}")
-        print()
+        logger.info("Recording session started. Type 'exit' to stop.")
+        logger.info(f"Working directory: {os.getcwd()}")
+        logger.info("")
 
         # Save terminal attributes
         old_tty = termios.tcgetattr(sys.stdin)
@@ -88,35 +93,54 @@ class TerminalRecorder:
     def _run_pty(self, shell: str):
         """Run shell in PTY and capture I/O."""
 
-        def read(fd):
-            """Read from file descriptor."""
-            try:
-                return os.read(fd, 1024)
-            except OSError:
-                return b''
-
         # Fork with PTY
         pid, master_fd = pty.fork()
 
         if pid == 0:
-            # Child process - run shell
-            os.execlp(shell, shell)
-        else:
-            # Parent process - capture I/O
+            # Child process - replace with the requested shell
             try:
-                mode = tty.tcgetattr(master_fd)
-                tty.setraw(master_fd)
-                tty.tcsetattr(master_fd, tty.TCSAFLUSH, mode)
-            except tty.error:
-                pass
+                os.execlp(shell, shell)
+            except Exception as e:
+                # If exec fails, write error and exit child
+                try:
+                    sys.stderr.write(f"Failed to exec shell {shell}: {e}\n")
+                except Exception:
+                    pass
+                os._exit(1)
+        else:
+            # Parent process - set stdin to raw mode so keystrokes forward properly
+            stdin_fd = sys.stdin.fileno()
+            old_stdin_attrs = None
+            try:
+                # Save and set raw mode on the real terminal input (not the master FD)
+                old_stdin_attrs = termios.tcgetattr(stdin_fd)
+                tty.setraw(stdin_fd)
+            except Exception:
+                # If we can't change terminal mode, continue but ensure no crash
+                old_stdin_attrs = None
 
             try:
                 self._io_loop(master_fd)
             except (IOError, OSError):
                 pass
+            finally:
+                # Restore stdin terminal attributes if we changed them
+                if old_stdin_attrs is not None:
+                    try:
+                        termios.tcsetattr(stdin_fd, termios.TCSAFLUSH, old_stdin_attrs)
+                    except Exception:
+                        pass
 
-            # Wait for shell to exit
-            os.waitpid(pid, 0)
+                # Close master FD and wait for child to avoid zombies
+                try:
+                    os.close(master_fd)
+                except Exception:
+                    pass
+
+                try:
+                    os.waitpid(pid, 0)
+                except Exception:
+                    pass
 
     def _io_loop(self, master_fd):
         """Main I/O loop for PTY."""
@@ -137,8 +161,8 @@ class TerminalRecorder:
 
                 # Parse for command completion (naive: look for newline)
                 try:
-                    text = data.decode('utf-8', errors='ignore')
-                    if '\n' in text or '\r' in text:
+                    text = data.decode("utf-8", errors="ignore")
+                    if "\n" in text or "\r" in text:
                         if command_line.strip():
                             self._record_command(command_line.strip())
                         command_line = ""
@@ -158,14 +182,14 @@ class TerminalRecorder:
 
                 # Track command being typed
                 try:
-                    text = data.decode('utf-8', errors='ignore')
-                    if text == '\r' or text == '\n':
+                    text = data.decode("utf-8", errors="ignore")
+                    if text == "\r" or text == "\n":
                         if command_line.strip():
                             self._record_command(command_line.strip())
                         command_line = ""
-                    elif text == '\x7f':  # Backspace
+                    elif text == "\x7f":  # Backspace
                         command_line = command_line[:-1]
-                    elif not text.startswith('\x1b'):  # Not escape sequence
+                    elif not text.startswith("\x1b"):  # Not escape sequence
                         command_line += text
                 except:
                     pass
@@ -173,13 +197,11 @@ class TerminalRecorder:
     def _record_command(self, command: str):
         """Record a command execution."""
         # Filter out common noise
-        if not command or command in ['ls', 'pwd', 'clear', 'history']:
+        if not command or command in ["ls", "pwd", "clear", "history"]:
             return
 
         event = CommandEvent(
-            timestamp=datetime.now().isoformat(),
-            command=command,
-            cwd=os.getcwd()
+            timestamp=datetime.now().isoformat(), command=command, cwd=os.getcwd()
         )
         self.recording.commands.append(event)
 
@@ -199,30 +221,30 @@ class RecordingSession:
             watch_paths: Paths to watch for changes (default: ['/etc'])
         """
         if watch_paths is None:
-            watch_paths = ['/etc']
+            watch_paths = ["/etc"]
 
         self.recording = Recording(
-            start_time=datetime.now().isoformat(),
-            watched_paths=watch_paths
+            start_time=datetime.now().isoformat(), watched_paths=watch_paths
         )
         self.terminal_recorder = TerminalRecorder(self.recording)
         self.watcher = None
 
     def start(self):
         """Start recording session."""
-        print("Cook recording session")
-        print("=" * 50)
+        logger.info("Cook recording session")
+        logger.separator("=", 50)
 
         # Start filesystem watcher if available
         try:
             from cook.record.watcher import FileWatcher
+
             self.watcher = FileWatcher(self.recording)
             self.watcher.start()
-            print(f"Watching: {', '.join(self.recording.watched_paths)}")
+            logger.info(f"Watching: {', '.join(self.recording.watched_paths)}")
         except ImportError:
-            print("Filesystem watcher not available (install watchdog)")
+            logger.warning("Filesystem watcher not available (install watchdog)")
 
-        print()
+        logger.info("")
 
         # Start terminal recorder
         self.terminal_recorder.start()
@@ -243,12 +265,12 @@ class RecordingSession:
         """
         data = asdict(self.recording)
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(data, f, indent=2)
 
-        print(f"\nRecording saved to {output_file}")
-        print(f"Commands captured: {len(self.recording.commands)}")
-        print(f"File changes: {len(self.recording.file_changes)}")
+        logger.info(f"\nRecording saved to {output_file}")
+        logger.info(f"Commands captured: {len(self.recording.commands)}")
+        logger.info(f"File changes: {len(self.recording.file_changes)}")
 
     def generate_code(self, output_file: str):
         """
@@ -257,8 +279,8 @@ class RecordingSession:
         Args:
             output_file: Path to save generated .py file
         """
-        from cook.record.parser import CommandParser
         from cook.record.generator import CodeGenerator
+        from cook.record.parser import CommandParser
 
         # Parse commands
         parser = CommandParser()
@@ -280,8 +302,8 @@ class RecordingSession:
                 code += f"# {change.operation}: {change.path}\n"
 
         # Save
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             f.write(code)
 
-        print(f"\nGenerated config saved to {output_file}")
-        print(f"Resources extracted: {len(resources)}")
+        logger.success(f"Generated config saved to {output_file}")
+        logger.info(f"Resources extracted: {len(resources)}")

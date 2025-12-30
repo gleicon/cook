@@ -7,18 +7,18 @@ Tracks:
 - Who/when/what changed
 """
 
-import sqlite3
 import json
-import os
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any, List, Optional
+import sqlite3
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
 class ResourceState:
     """Represents the state of a managed resource."""
+
     id: str
     type: str
     desired_state: Dict[str, Any]
@@ -33,6 +33,7 @@ class ResourceState:
 @dataclass
 class HistoryEntry:
     """Represents a single change in resource history."""
+
     timestamp: datetime
     resource_id: str
     action: str
@@ -125,22 +126,25 @@ class Store:
         Args:
             state: ResourceState to save
         """
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT OR REPLACE INTO resources
             (id, type, desired_state, actual_state, applied_at, applied_by,
              hostname, config_file, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            state.id,
-            state.type,
-            json.dumps(state.desired_state),
-            json.dumps(state.actual_state),
-            state.applied_at.isoformat(),
-            state.applied_by,
-            state.hostname,
-            state.config_file,
-            state.status,
-        ))
+        """,
+            (
+                state.id,
+                state.type,
+                json.dumps(state.desired_state),
+                json.dumps(state.actual_state),
+                state.applied_at.isoformat(),
+                state.applied_by,
+                state.hostname,
+                state.config_file,
+                state.status,
+            ),
+        )
         self.conn.commit()
 
     def get_resource(self, resource_id: str) -> Optional[ResourceState]:
@@ -154,8 +158,7 @@ class Store:
             ResourceState or None if not found
         """
         row = self.conn.execute(
-            "SELECT * FROM resources WHERE id = ?",
-            (resource_id,)
+            "SELECT * FROM resources WHERE id = ?", (resource_id,)
         ).fetchone()
 
         if not row:
@@ -206,20 +209,23 @@ class Store:
         Args:
             entry: HistoryEntry to record
         """
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO history
             (timestamp, resource_id, action, user, hostname, success, changes, error)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            entry.timestamp.isoformat(),
-            entry.resource_id,
-            entry.action,
-            entry.user,
-            entry.hostname,
-            1 if entry.success else 0,
-            json.dumps(entry.changes),
-            entry.error,
-        ))
+        """,
+            (
+                entry.timestamp.isoformat(),
+                entry.resource_id,
+                entry.action,
+                entry.user,
+                entry.hostname,
+                1 if entry.success else 0,
+                json.dumps(entry.changes),
+                entry.error,
+            ),
+        )
         self.conn.commit()
 
     def get_history(self, resource_id: str, limit: int = 10) -> List[HistoryEntry]:
@@ -233,12 +239,15 @@ class Store:
         Returns:
             List of HistoryEntry objects
         """
-        rows = self.conn.execute("""
+        rows = self.conn.execute(
+            """
             SELECT * FROM history
             WHERE resource_id = ?
             ORDER BY timestamp DESC
             LIMIT ?
-        """, (resource_id, limit)).fetchall()
+        """,
+            (resource_id, limit),
+        ).fetchall()
 
         return [
             HistoryEntry(

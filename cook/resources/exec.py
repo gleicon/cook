@@ -1,11 +1,6 @@
 """
 Exec resource - run arbitrary commands.
 
-Used for tasks that don't fit other resources:
-- Database setup
-- Application deployment
-- Custom scripts
-
 SECURITY WARNING:
     Commands are executed via shell (shell=True) to support pipes,
     redirects, and shell features. Only use this resource with
@@ -27,23 +22,27 @@ SECURITY FEATURES:
 import hashlib
 import re
 import shlex
-import os
-from typing import Dict, Any, Optional, List
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
-from cook.core.resource import Resource, Plan, Action, Platform
 from cook.core.executor import get_executor
+from cook.core import Plan, Platform, Resource
+from cook.logging import get_cook_logger
+
+logger = get_cook_logger(__name__)
 
 
 class SecurityLevel(Enum):
     """Security validation levels."""
-    NONE = "none"        # No validation (dangerous)
-    WARN = "warn"        # Warn but allow
-    STRICT = "strict"    # Block dangerous patterns
+
+    NONE = "none"  # No validation (dangerous)
+    WARN = "warn"  # Warn but allow
+    STRICT = "strict"  # Block dangerous patterns
 
 
 class SecurityViolation(Exception):
     """Raised when command fails security validation."""
+
     pass
 
 
@@ -86,31 +85,31 @@ class Exec(Resource):
 
     # Dangerous shell metacharacters and patterns
     DANGEROUS_PATTERNS = [
-        r';',           # Command chaining
-        r'\&\&',        # Conditional execution
-        r'\|\|',        # Conditional execution
-        r'\|',          # Pipe (allow if explicitly permitted)
-        r'\$\(',        # Command substitution
-        r'`',           # Backtick command substitution
-        r'\$\{',        # Variable expansion
-        r'>',           # Redirect (allow if explicitly permitted)
-        r'<',           # Redirect (allow if explicitly permitted)
-        r'\n',          # Newline injection
-        r'\r',          # Carriage return
+        r";",  # Command chaining
+        r"\&\&",  # Conditional execution
+        r"\|\|",  # Conditional execution
+        r"\|",  # Pipe (allow if explicitly permitted)
+        r"\$\(",  # Command substitution
+        r"`",  # Backtick command substitution
+        r"\$\{",  # Variable expansion
+        r">",  # Redirect (allow if explicitly permitted)
+        r"<",  # Redirect (allow if explicitly permitted)
+        r"\n",  # Newline injection
+        r"\r",  # Carriage return
     ]
 
     # Dangerous commands that should trigger warnings
     DANGEROUS_COMMANDS = [
-        r'\brm\s+-rf\s+/',              # Recursive delete from root
-        r'\bdd\s+if=/dev/',             # Disk operations
-        r'\bmkfs\.',                     # Format filesystem
-        r'\b:\(\)\{\s*:\|:\&\s*\};:',   # Fork bomb
-        r'\bchmod\s+777',                # World-writable
-        r'\bchown\s+.*root',             # Change to root
-        r'curl.*\|\s*(bash|sh)',         # Pipe to shell
-        r'wget.*\|\s*(bash|sh)',         # Pipe to shell
-        r'\beval\s',                     # Eval injection
-        r'/dev/sd[a-z]',                 # Direct disk access
+        r"\brm\s+-rf\s+/",  # Recursive delete from root
+        r"\bdd\s+if=/dev/",  # Disk operations
+        r"\bmkfs\.",  # Format filesystem
+        r"\b:\(\)\{\s*:\|:\&\s*\};:",  # Fork bomb
+        r"\bchmod\s+777",  # World-writable
+        r"\bchown\s+.*root",  # Change to root
+        r"curl.*\|\s*(bash|sh)",  # Pipe to shell
+        r"wget.*\|\s*(bash|sh)",  # Pipe to shell
+        r"\beval\s",  # Eval injection
+        r"/dev/sd[a-z]",  # Direct disk access
     ]
 
     def __init__(
@@ -127,7 +126,7 @@ class Exec(Resource):
         security_level: str = "strict",  # STRICT BY DEFAULT
         allow_pipes: bool = True,
         allow_redirects: bool = True,
-        **options
+        **options,
     ):
         """
         Initialize exec resource.
@@ -173,16 +172,12 @@ class Exec(Resource):
         # IMPORTANT: Warn when safe_mode is explicitly disabled
         if not self.safe_mode:
             warning_msg = (
-                f"\n{'='*70}\n"
-                f"SECURITY WARNING: Exec resource '{self.name}' is running in UNSAFE MODE\n"
-                f"{'='*70}\n"
-                f"  safe_mode=False disables security validation\n"
+                f"safe_mode=False disables security validation\n"
                 f"  Command: {self.command[:60]}{'...' if len(self.command) > 60 else ''}\n"
                 f"  This is DANGEROUS and should only be used with fully trusted input.\n"
-                f"  Set safe_mode=True (default) for security validation.\n"
-                f"{'='*70}\n"
+                f"  Set safe_mode=True (default) for security validation."
             )
-            print(f"\033[91m{warning_msg}\033[0m")  # Red warning
+            logger.security_warning(warning_msg, resource=f"Exec resource '{self.name}' is running in UNSAFE MODE")
 
         # Validate inputs on initialization
         self._validate_security()
@@ -236,7 +231,7 @@ class Exec(Resource):
                 raise SecurityViolation(msg)
             else:
                 # Just warn
-                print(f"\033[93m{msg}\033[0m")  # Yellow warning
+                logger.warning(msg)
 
     def _check_command_security(self, cmd: str, context: str) -> List[str]:
         """Check command for security issues."""
@@ -245,9 +240,9 @@ class Exec(Resource):
         # Check for dangerous patterns
         for pattern in self.DANGEROUS_PATTERNS:
             # Skip allowed patterns
-            if pattern == r'\|' and self.allow_pipes:
+            if pattern == r"\|" and self.allow_pipes:
                 continue
-            if pattern in [r'>', r'<'] and self.allow_redirects:
+            if pattern in [r">", r"<"] and self.allow_redirects:
                 continue
 
             if re.search(pattern, cmd):
@@ -263,7 +258,7 @@ class Exec(Resource):
                 )
 
         # Check for environment variable injection
-        if '$' in cmd and '${' not in cmd and '$(' not in cmd:
+        if "$" in cmd and "${" not in cmd and "$(" not in cmd:
             # Shell variable reference - potential injection
             issues.append(
                 f"{context}: Contains shell variable reference - potential injection"
@@ -276,7 +271,7 @@ class Exec(Resource):
         issues = []
 
         # Check for command injection in paths
-        dangerous = [';', '&', '|', '$', '`', '\n', '\r']
+        dangerous = [";", "&", "|", "$", "`", "\n", "\r"]
         for char in dangerous:
             if char in path:
                 issues.append(
@@ -284,16 +279,12 @@ class Exec(Resource):
                 )
 
         # Check for directory traversal
-        if '..' in path:
-            issues.append(
-                f"{context}: Path contains directory traversal (..): {path}"
-            )
+        if ".." in path:
+            issues.append(f"{context}: Path contains directory traversal (..): {path}")
 
         # Check for null bytes
-        if '\x00' in path:
-            issues.append(
-                f"{context}: Path contains null byte"
-            )
+        if "\x00" in path:
+            issues.append(f"{context}: Path contains null byte")
 
         return issues
 
@@ -302,13 +293,13 @@ class Exec(Resource):
         issues = []
 
         # Check key
-        if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', key):
+        if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", key):
             issues.append(
                 f"environment: Invalid variable name '{key}' (must be alphanumeric)"
             )
 
         # Check value for command injection
-        dangerous = [';', '&', '|', '$', '`', '\n', '\r']
+        dangerous = [";", "&", "|", "$", "`", "\n", "\r"]
         for char in dangerous:
             if char in value:
                 issues.append(
@@ -330,7 +321,7 @@ class Exec(Resource):
         # Check 'unless' guard (skip in dry-run)
         if should_run and self.unless and not self.dry_run:
             try:
-                output, code = self._transport.run_shell(self.unless)
+                _, code = self._transport.run_shell(self.unless)
                 if code == 0:
                     should_run = False
             except Exception as e:
@@ -339,7 +330,7 @@ class Exec(Resource):
         # Check 'only_if' guard (skip in dry-run)
         if should_run and self.only_if and not self.dry_run:
             try:
-                output, code = self._transport.run_shell(self.only_if)
+                _, code = self._transport.run_shell(self.only_if)
                 if code != 0:
                     should_run = False
             except Exception as e:
@@ -373,18 +364,18 @@ class Exec(Resource):
 
         # Dry run mode - just preview
         if self.dry_run:
-            print(f"\n[DRY RUN] Would execute for '{self.name}':")
-            print(f"  Command: {final_cmd}")
+            logger.dry_run(f"Would execute for '{self.name}':")
+            logger.info(f"  Command: {final_cmd}")
             if self.cwd:
-                print(f"  Working directory: {self.cwd}")
+                logger.info(f"  Working directory: {self.cwd}")
             if self.environment:
-                print(f"  Environment: {self.environment}")
-            print(f"  (Not executed - dry_run=True)\n")
+                logger.info(f"  Environment: {self.environment}")
+            logger.info(f"  (Not executed - dry_run=True)")
             return
 
         # Warn again before execution if unsafe mode
         if not self.safe_mode:
-            print(f"\033[91m EXECUTING IN UNSAFE MODE: {self.name}\033[0m")
+            logger.security_warning(f"EXECUTING IN UNSAFE MODE: {self.name}")
 
         # Execute command
         output, code = self._transport.run_shell(final_cmd)
@@ -466,5 +457,9 @@ class Exec(Resource):
             "safe_mode": self.safe_mode,
             "dry_run": self.dry_run,
             "issues": issues,
-            "risk_level": "high" if len(issues) > 3 else "medium" if len(issues) > 0 else "low",
+            "risk_level": "high"
+            if len(issues) > 3
+            else "medium"
+            if len(issues) > 0
+            else "low",
         }

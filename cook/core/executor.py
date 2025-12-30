@@ -8,15 +8,18 @@ The executor:
 4. Tracks state (optional)
 """
 
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional
-import time
 import os
 import socket
+import time
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Dict, List, Optional
 
-from cook.core.resource import Resource, Plan, Action, Platform
-from cook.transport import Transport, LocalTransport
+from cook.core import Action, Plan, Platform, Resource
+from cook.transport import LocalTransport, Transport
+from cook.logging import get_cook_logger
+
+logger = get_cook_logger(__name__)
 
 
 @dataclass
@@ -26,6 +29,7 @@ class PlanResult:
 
     Contains plans for all resources and summary statistics.
     """
+
     plans: Dict[str, Plan] = field(default_factory=dict)
     errors: List[Exception] = field(default_factory=list)
 
@@ -52,6 +56,7 @@ class ApplyResult:
 
     Contains success/failure info and changed resource IDs.
     """
+
     changed_resources: List[str] = field(default_factory=list)
     errors: List[Exception] = field(default_factory=list)
     duration: float = 0.0
@@ -110,6 +115,10 @@ class Executor:
 
         Returns:
             The resource (for chaining/references)
+
+        Note:
+            This method sets the transport on the resource, which is required
+            before any operations (check/plan/apply) can be performed.
         """
         if resource.id in self._registry:
             raise ValueError(f"Duplicate resource: {resource.id}")
@@ -205,13 +214,13 @@ class Executor:
 
             # Check if service should restart (takes precedence over reload)
             if resource.should_restart(changed_resource_ids):
-                print(f"  ↻ {resource.id} restarted")
+                logger.info(f"  ↻ {resource.id} restarted")
                 resource.restart(self.platform)
                 continue
 
             # Check if service should reload
             if resource.should_reload(changed_resource_ids):
-                print(f"  ⟳ {resource.id} reloaded")
+                logger.info(f"  ⟳ {resource.id} reloaded")
                 resource.reload(self.platform)
 
     def _save_state(self, plan_result: PlanResult, apply_result: ApplyResult) -> None:
@@ -223,7 +232,7 @@ class Executor:
             apply_result: Apply result
         """
         try:
-            from cook.state import Store, ResourceState, HistoryEntry
+            from cook.state import HistoryEntry, ResourceState, Store
         except ImportError:
             # State persistence not available
             return
@@ -260,8 +269,10 @@ class Executor:
 
                 # Add history entry if changed
                 if resource.id in apply_result.changed_resources:
-                    changes = {c.field: {"from": c.from_value, "to": c.to_value}
-                              for c in plan.changes}
+                    changes = {
+                        c.field: {"from": c.from_value, "to": c.to_value}
+                        for c in plan.changes
+                    }
 
                     entry = HistoryEntry(
                         timestamp=timestamp,
@@ -287,11 +298,11 @@ class Registry:
     Provides a singleton pattern for resource collection.
     """
 
-    _instance: Optional['Registry'] = None
+    _instance: Optional["Registry"] = None
     _executor: Optional[Executor] = None
 
     @classmethod
-    def get_instance(cls) -> 'Registry':
+    def get_instance(cls) -> "Registry":
         """Get singleton registry instance."""
         if cls._instance is None:
             cls._instance = cls()

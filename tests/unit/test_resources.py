@@ -8,7 +8,7 @@ import os
 import tempfile
 import pytest
 
-from cook.core.resource import Platform, Action
+from cook.core import Platform, Action
 from cook.resources.file import File
 from cook.resources.service import Service
 

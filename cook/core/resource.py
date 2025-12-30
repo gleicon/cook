@@ -5,18 +5,22 @@ All resources (File, Package, Service, etc.) inherit from Resource
 and implement the Check/Plan/Apply pattern.
 """
 
+import platform as platform_module
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Any, Optional, List, TYPE_CHECKING
-import platform as platform_module
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from cook.transport import Transport
+else:
+    # Import NullTransport at runtime for default value
+    from cook.transport import NullTransport, Transport
 
 
 class Action(Enum):
     """Resource actions during apply."""
+
     NONE = "none"
     CREATE = "create"
     UPDATE = "update"
@@ -26,6 +30,7 @@ class Action(Enum):
 @dataclass
 class Change:
     """Represents a single property change."""
+
     field: str
     from_value: Any
     to_value: Any
@@ -41,6 +46,7 @@ class Plan:
 
     Similar to Terraform's plan, shows what will change.
     """
+
     action: Action
     changes: List[Change] = field(default_factory=list)
     reason: str = ""
@@ -64,6 +70,7 @@ class Plan:
 @dataclass
 class Platform:
     """Platform information (OS, distro, version)."""
+
     system: str  # Linux, Darwin, Windows
     distro: str  # ubuntu, debian, arch, etc.
     version: str
@@ -92,6 +99,7 @@ class Platform:
             if system == "Linux":
                 try:
                     import distro as distro_lib
+
                     distro = distro_lib.id()
                     version = distro_lib.version()
                 except ImportError:
@@ -176,7 +184,8 @@ class Resource(ABC):
         self.options = options
         self._desired_state: Dict[str, Any] = {}
         self._actual_state: Dict[str, Any] = {}
-        self._transport: Optional["Transport"] = None  # Set by executor
+        # Use NullTransport by default - raises helpful errors if used before executor sets real transport
+        self._transport: "Transport" = NullTransport()
 
     @property
     def id(self) -> str:

@@ -10,7 +10,7 @@ import pytest
 from pathlib import Path
 
 from cook.core.executor import Executor, reset_executor
-from cook.core.resource import Platform
+from cook.core import Platform
 from cook.resources.file import File
 from cook.resources.pkg import Package
 

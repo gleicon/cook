@@ -1,10 +1,11 @@
 __version__ = "0.1.0"
 
-from cook.core.resource import Resource, Plan, Action
+from cook.core import Resource, Plan, Action
 from cook.resources.file import File
 from cook.resources.pkg import Package
 from cook.resources.service import Service
 from cook.resources.exec import Exec
+from cook.logging import get_logger, get_cook_logger, setup_logging
 
 """
 Foundations of Cook Workflows:
@@ -25,4 +26,7 @@ __all__ = [
     "Package",
     "Service",
     "Exec",
+    "get_logger",
+    "get_cook_logger",
+    "setup_logging",
 ]

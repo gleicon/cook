@@ -9,6 +9,9 @@ dist/
 build/
 *.egg
 
+# uv
+.python-version
+
 # Virtual environments
 .venv/
 venv/
