@@ -9,16 +9,14 @@ Handles:
 - Symbolic links
 """
 
-import os
-import stat
-import pwd
-import grp
-from typing import Dict, Any, Optional
 from pathlib import Path
+from typing import Any, Dict, Optional
 
-from cook.core.resource import Resource, Plan, Action, Platform
 from cook.core.executor import get_executor
+from cook.core.resource import Resource, Platform, Plan, Action
 
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2.exceptions import TemplateError, TemplateNotFound
 
 class File(Resource):
     """
@@ -58,7 +56,7 @@ class File(Resource):
         mode: Optional[int] = None,
         owner: Optional[str] = None,
         group: Optional[str] = None,
-        **options
+        **options,
     ):
         """
         Initialize file resource.
@@ -234,7 +232,9 @@ class File(Resource):
         """Set file owner, group, and mode."""
         # Set owner/group via chown command
         if self.owner is not None and self.group is not None:
-            self._transport.run_command(["chown", f"{self.owner}:{self.group}", self.path])
+            self._transport.run_command(
+                ["chown", f"{self.owner}:{self.group}", self.path]
+            )
         elif self.owner is not None:
             self._transport.run_command(["chown", self.owner, self.path])
         elif self.group is not None:
@@ -246,31 +246,62 @@ class File(Resource):
             self._transport.run_command(["chmod", mode_str, self.path])
 
     def _read_source(self) -> str:
-        """Read content from source file."""
+        """Read content from source file.
+
+        Validates that a source path was provided and returns its text
+        content decoded as UTF-8. Raises clear errors for missing source,
+        missing file, or read failures.
+        """
+        if self.source is None:
+            raise ValueError("No source specified for File resource")
+
         source_path = Path(self.source)
         if not source_path.exists():
             raise FileNotFoundError(f"Source file not found: {self.source}")
-        return source_path.read_text()
+
+        try:
+            return source_path.read_text(encoding="utf-8")
+        except Exception as e:
+            raise RuntimeError(f"Failed to read source file {self.source}: {e}") from e
 
     def _render_template(self) -> str:
-        """Render Jinja2 template."""
-        try:
-            from jinja2 import Environment, FileSystemLoader, select_autoescape
-        except ImportError:
-            raise ImportError(
-                "Jinja2 is required for template support. "
-                "Install with: pip install jinja2"
-            )
+        """Render Jinja2 template.
+
+        Performs validation on self.template (which may be None) and renders
+        using Jinja2. Raises clear errors for missing Jinja2, missing template,
+        or render failures.
+        """
+        if not self.template:
+            raise ValueError("No template specified for File resource")
 
         template_path = Path(self.template)
+        if template_path.is_dir():
+            raise IsADirectoryError(f"Template path is a directory: {self.template}")
         if not template_path.exists():
             raise FileNotFoundError(f"Template not found: {self.template}")
 
-        # Set up Jinja2 environment
+        # Set up Jinja2 environment. Use the template's parent directory as the loader.
         env = Environment(
-            loader=FileSystemLoader(template_path.parent),
-            autoescape=select_autoescape(),
+            loader=FileSystemLoader(str(template_path.parent)),
+            autoescape=select_autoescape(),  # default autoescape behavior
+            keep_trailing_newline=True,
         )
 
-        template = env.get_template(template_path.name)
-        return template.render(**self.vars)
+        try:
+            template = env.get_template(template_path.name)
+            rendered = template.render(**(self.vars or {}))
+        except TemplateNotFound as e:
+            raise FileNotFoundError(f"Template not found by Jinja2: {e}") from e
+        except TemplateError as e:
+            raise RuntimeError(f"Failed to render template {self.template}: {e}") from e
+        except Exception as e:
+            # Fallback for any other unexpected errors
+            raise RuntimeError(
+                f"Unexpected error rendering template {self.template}: {e}"
+            ) from e
+
+        if not isinstance(rendered, str):
+            # Ensure a string is returned (Jinja2 should return str, but be defensive)
+            rendered = str(rendered)
+
+        return rendered

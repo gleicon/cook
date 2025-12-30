@@ -13,14 +13,27 @@ import importlib.util
 from pathlib import Path
 from typing import Optional
 
+from cook.core import Action
 from cook.core.executor import get_executor, reset_executor
-from cook.core.resource import Action, Platform
+from cook.logging import setup_logging, get_cook_logger
+
+logger = get_cook_logger(__name__)
 
 
 @click.group(invoke_without_command=True)
+@click.option('--debug', is_flag=True, help='Enable debug logging')
+@click.option('--quiet', is_flag=True, help='Suppress non-error output')
 @click.pass_context
-def cli(ctx):
+def cli(ctx, debug, quiet):
     """Cook - Modern configuration management in Python."""
+    # Initialize logging
+    if debug:
+        setup_logging(level="DEBUG")
+    elif quiet:
+        setup_logging(level="ERROR", show_time=False)
+    else:
+        setup_logging(level="INFO", show_time=False)
+
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 

@@ -5,17 +5,17 @@ Compares current system state against stored desired state.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from cook.state import Store, ResourceState
-from cook.core.resource import Platform
-from cook.core.executor import get_executor
+from cook.core. import Platform
+from cook.state import ResourceState, Store
 
 
 @dataclass
 class DriftResult:
     """Result of drift detection."""
+
     resource_id: str
     drifted: bool
     differences: Dict[str, Any] = field(default_factory=dict)
@@ -57,10 +57,7 @@ class DriftDetector:
         current_state = resource.check(self.platform)
 
         # Compare with stored state
-        drifted, differences = self._compare_states(
-            state.actual_state,
-            current_state
-        )
+        drifted, differences = self._compare_states(state.actual_state, current_state)
 
         # Update stored state if drifted
         if drifted:
@@ -101,10 +98,10 @@ class DriftDetector:
             Resource instance or None
         """
         # Import resource classes
+        from cook.resources.exec import Exec
         from cook.resources.file import File
         from cook.resources.pkg import Package
         from cook.resources.service import Service
-        from cook.resources.exec import Exec
 
         resource_map = {
             "file": File,
@@ -133,9 +130,7 @@ class DriftDetector:
             return None
 
     def _compare_states(
-        self,
-        stored_state: Dict[str, Any],
-        current_state: Dict[str, Any]
+        self, stored_state: Dict[str, Any], current_state: Dict[str, Any]
     ) -> tuple[bool, Dict[str, Any]]:
         """
         Compare stored state with current state.

@@ -14,14 +14,14 @@ Usage:
     cook record generate recording.json -o config.py
 """
 
-from cook.record.parser import CommandParser, ParsedResource
 from cook.record.generator import CodeGenerator
-from cook.record.recorder import RecordingSession, Recording
+from cook.record.parser import CommandParser, ParsedResource
+from cook.record.recorder import Recording, RecordingSession
 
 __all__ = [
-    'CommandParser',
-    'ParsedResource',
-    'CodeGenerator',
-    'RecordingSession',
-    'Recording',
+    "CommandParser",
+    "ParsedResource",
+    "CodeGenerator",
+    "RecordingSession",
+    "Recording",
 ]

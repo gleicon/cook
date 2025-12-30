@@ -124,3 +124,54 @@ class Transport(ABC):
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - closes connection."""
         self.close()
+
+
+class NullTransport(Transport):
+    """
+    Null Object pattern implementation for Transport.
+    
+    This transport raises helpful errors when methods are called,
+    indicating that the resource was not properly added to an executor.
+    
+    Used as the default transport for resources to avoid None checks.
+    """
+
+    def _raise_error(self, method_name: str) -> None:
+        """Raise a helpful error indicating transport not initialized."""
+        raise RuntimeError(
+            f"Cannot call {method_name}: Transport not initialized. "
+            f"Resources must be added to an executor before use. "
+            f"Example: get_executor().add(YourResource(...))"
+        )
+
+    def run_shell(self, command: str) -> Tuple[str, int]:
+        """Raise error - transport not initialized."""
+        self._raise_error("run_shell()")
+        return ("", 1)  # Never reached, but satisfies type checker
+
+    def run_command(self, args: list) -> Tuple[str, int]:
+        """Raise error - transport not initialized."""
+        self._raise_error("run_command()")
+        return ("", 1)  # Never reached, but satisfies type checker
+
+    def write_file(self, remote_path: str, content: bytes) -> None:
+        """Raise error - transport not initialized."""
+        self._raise_error("write_file()")
+
+    def read_file(self, remote_path: str) -> bytes:
+        """Raise error - transport not initialized."""
+        self._raise_error("read_file()")
+        return b""  # Never reached, but satisfies type checker
+
+    def file_exists(self, remote_path: str) -> bool:
+        """Raise error - transport not initialized."""
+        self._raise_error("file_exists()")
+        return False  # Never reached, but satisfies type checker
+
+    def copy_file(self, local_path: str, remote_path: str) -> None:
+        """Raise error - transport not initialized."""
+        self._raise_error("copy_file()")
+
+    def close(self) -> None:
+        """No-op for null transport."""
+        pass

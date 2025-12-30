@@ -7,10 +7,10 @@ Supports:
 - service command (fallback)
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
-from cook.core.resource import Resource, Plan, Action, Platform
 from cook.core.executor import get_executor
+from cook.core import Plan, Platform, Resource
 
 
 class Service(Resource):
@@ -43,7 +43,7 @@ class Service(Resource):
         enabled: Optional[bool] = None,
         reload_on: Optional[List] = None,
         restart_on: Optional[List] = None,
-        **options
+        **options,
     ):
         """
         Initialize service resource.
@@ -73,7 +73,7 @@ class Service(Resource):
         for r in resources:
             if isinstance(r, str):
                 ids.append(r)
-            elif hasattr(r, 'id'):
+            elif hasattr(r, "id"):
                 ids.append(r.id)
         return ids
 
@@ -118,13 +118,13 @@ class Service(Resource):
         """Check if service is running."""
         try:
             if platform.system == "Linux":
-                output, code = self._transport.run_command(
+                _, code = self._transport.run_command(
                     ["systemctl", "is-active", self.service_name]
                 )
                 return code == 0
 
             elif platform.system == "Darwin":
-                output, code = self._transport.run_command(
+                _, code = self._transport.run_command(
                     ["launchctl", "list", f"com.{self.service_name}"]
                 )
                 return code == 0
@@ -138,7 +138,7 @@ class Service(Resource):
         """Check if service is enabled at boot."""
         try:
             if platform.system == "Linux":
-                output, code = self._transport.run_command(
+                _, code = self._transport.run_command(
                     ["systemctl", "is-enabled", self.service_name]
                 )
                 return code == 0
@@ -155,29 +155,39 @@ class Service(Resource):
     def _start(self, platform: Platform) -> None:
         """Start service."""
         if platform.system == "Linux":
-            output, code = self._transport.run_command(["systemctl", "start", self.service_name])
+            output, code = self._transport.run_command(
+                ["systemctl", "start", self.service_name]
+            )
             if code != 0:
                 raise RuntimeError(f"Failed to start service: {output}")
         elif platform.system == "Darwin":
-            output, code = self._transport.run_command(["launchctl", "start", self.service_name])
+            output, code = self._transport.run_command(
+                ["launchctl", "start", self.service_name]
+            )
             if code != 0:
                 raise RuntimeError(f"Failed to start service: {output}")
 
     def _stop(self, platform: Platform) -> None:
         """Stop service."""
         if platform.system == "Linux":
-            output, code = self._transport.run_command(["systemctl", "stop", self.service_name])
+            output, code = self._transport.run_command(
+                ["systemctl", "stop", self.service_name]
+            )
             if code != 0:
                 raise RuntimeError(f"Failed to stop service: {output}")
         elif platform.system == "Darwin":
-            output, code = self._transport.run_command(["launchctl", "stop", self.service_name])
+            output, code = self._transport.run_command(
+                ["launchctl", "stop", self.service_name]
+            )
             if code != 0:
                 raise RuntimeError(f"Failed to stop service: {output}")
 
     def _enable(self, platform: Platform) -> None:
         """Enable service at boot."""
         if platform.system == "Linux":
-            output, code = self._transport.run_command(["systemctl", "enable", self.service_name])
+            output, code = self._transport.run_command(
+                ["systemctl", "enable", self.service_name]
+            )
             if code != 0:
                 raise RuntimeError(f"Failed to enable service: {output}")
         elif platform.system == "Darwin":
@@ -187,26 +197,36 @@ class Service(Resource):
     def _disable(self, platform: Platform) -> None:
         """Disable service at boot."""
         if platform.system == "Linux":
-            output, code = self._transport.run_command(["systemctl", "disable", self.service_name])
+            output, code = self._transport.run_command(
+                ["systemctl", "disable", self.service_name]
+            )
             if code != 0:
                 raise RuntimeError(f"Failed to disable service: {output}")
 
     def reload(self, platform: Platform) -> None:
         """Reload service configuration."""
         if platform.system == "Linux":
-            output, code = self._transport.run_command(["systemctl", "reload", self.service_name])
+            output, code = self._transport.run_command(
+                ["systemctl", "reload", self.service_name]
+            )
             if code != 0:
                 raise RuntimeError(f"Failed to reload service: {output}")
 
     def restart(self, platform: Platform) -> None:
         """Restart service."""
         if platform.system == "Linux":
-            output, code = self._transport.run_command(["systemctl", "restart", self.service_name])
+            output, code = self._transport.run_command(
+                ["systemctl", "restart", self.service_name]
+            )
             if code != 0:
                 raise RuntimeError(f"Failed to restart service: {output}")
         elif platform.system == "Darwin":
+            # Stop first (ignore output/errors)
             self._transport.run_command(["launchctl", "stop", self.service_name])
-            output, code = self._transport.run_command(["launchctl", "start", self.service_name])
+            # Then start and check result
+            output, code = self._transport.run_command(
+                ["launchctl", "start", self.service_name]
+            )
             if code != 0:
                 raise RuntimeError(f"Failed to restart service: {output}")
 

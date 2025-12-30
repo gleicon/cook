@@ -8,11 +8,10 @@ Supports:
 - brew (macOS)
 """
 
-import os
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
-from cook.core.resource import Resource, Plan, Action, Platform
 from cook.core.executor import get_executor
+from cook.core import Action, Plan, Platform, Resource
 
 
 class Package(Resource):
@@ -42,7 +41,7 @@ class Package(Resource):
         version: Optional[str] = None,
         ensure: str = "present",  # "present", "absent", "latest"
         packages: Optional[List[str]] = None,
-        **options
+        **options,
     ):
         """
         Initialize package resource.

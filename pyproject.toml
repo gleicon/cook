@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "cook"
@@ -21,10 +21,12 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 dependencies = [
     "click>=8.0.0",
+    "rich>=13.0.0",
 ]
 
 [project.optional-dependencies]
@@ -45,10 +47,6 @@ dev = [
 cook = "cook.cli.main:main"
 cook-mcp = "cook.mcp.server:main"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["cook*"]
-exclude = ["tests*"]
 
 [tool.black]
 line-length = 100
