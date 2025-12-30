@@ -1,12 +1,32 @@
 # Cook
 
-Configuration management in Python.
+## TL;DR
+
+Configuration management in Python for the Impatient.
+
+## Long form
+
+Once upon a time configuration management was all that we had. Chef, CFEngine, Ansible, Puppet, Saltstack and others were the way to scale out teams and keep consistent production environments. 
+
+After a while we got Docker and Dockerfile became the way to express an image that could be changed or thrown away not package by package but entirely. 
+
+This is good and practical but at the same time, the effort on configuration management drifted to infrastructure as code, led by Terraform and others and configuring a VM was a side consideration - as IaC was at the height of server configuration management, it is a pendulum.
+
+Getting back to a simple server configuration approach served me as I had to migrate apps from cloud to physical servers and the provisioning was limited. I also wanted to express the quick-and-dirty without having to learn an enterprise framework - which all of the above became and also without having to vibe code shell scripts downloadable by curl.
+
+Hence cook, a Pythonic way to describe and manage a server configuration, which can be tested, dry ran and also connect with other ways of communicating to servers. 
+
+It comes with a recorder kind of like Ascii Cinema where it see how you like to configure your server, learn from it and create code that can replicate it.
+
+There is also a MCP server which can be configured on your preferred coding agent to transform it into a sysadmin. Having provisioning instructions translated to code is safer than letting your agent learn your cloud cli and hallucinate over it.
+
+It works for containers, for big servers and for fleet of virtual machines all the same. Being a python application opens up to integration, better observability and drift control and translator of other frameworks and configurations.
 
 ## Features
 
 - Pure Python configuration (no YAML/DSL)
 - Drift detection and auto-correction
-- Recording mode to capture manual changes
+- Recording mode to capture manual changes (learning mode)
 - MCP server for AI integration
 - SSH transport with sudo support
 
@@ -120,12 +140,12 @@ See [examples/README.md](examples/README.md).
 
 ## Comparison
 
-| Feature | Cook | Ansible | Pyinfra | Terraform |
-|---------|------|---------|---------|-----------|
-| Language | Python | YAML | Python | HCL |
-| Drift Detection | Yes | No | No | Yes |
-| Recording Mode | Yes | No | No | No |
-| AI Integration | Yes | No | No | No |
+| Feature         | Cook   | Ansible | Pyinfra | Terraform |
+| --------------- | ------ | ------- | ------- | --------- |
+| Language        | Python | YAML    | Python  | HCL       |
+| Drift Detection | Yes    | No      | No      | Yes       |
+| Recording Mode  | Yes    | No      | No      | No        |
+| AI Integration  | Yes    | No      | No      | No        |
 
 ## Status
 
