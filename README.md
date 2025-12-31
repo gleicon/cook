@@ -6,15 +6,15 @@ Configuration management in Python for the Impatient.
 
 ## Long form
 
-Once upon a time configuration management was all that we had. Chef, CFEngine, Ansible, Puppet, Saltstack and others were the way to scale out teams and keep consistent production environments. 
+Once upon a time configuration management was all that we had. Chef, CFEngine, Ansible, Puppet, Saltstack and others were the way to scale out teams and keep consistent production environments.
 
-After a while we got Docker and Dockerfile became the way to express an image that could be changed or thrown away not package by package but entirely. 
+After a while we got Docker and Dockerfile became the way to express an image that could be changed or thrown away not package by package but entirely.
 
 This is good and practical but at the same time, the effort on configuration management drifted to infrastructure as code, led by Terraform and others and configuring a VM was a side consideration - as IaC was at the height of server configuration management, it is a pendulum.
 
 Getting back to a simple server configuration approach served me as I had to migrate apps from cloud to physical servers and the provisioning was limited. I also wanted to express the quick-and-dirty without having to learn an enterprise framework - which all of the above became and also without having to vibe code shell scripts downloadable by curl.
 
-Hence cook, a Pythonic way to describe and manage a server configuration, which can be tested, dry ran and also connect with other ways of communicating to servers. 
+Hence cook, a Pythonic way to describe and manage a server configuration, which can be tested, dry ran and also connect with other ways of communicating to servers.
 
 It comes with a recorder kind of like Ascii Cinema where it see how you like to configure your server, learn from it and create code that can replicate it.
 
@@ -80,10 +80,12 @@ pip install -e ".[all]"
 
 ## Core Resources
 
-- **File** - Files, directories, templates (Jinja2)
+Resources are abstractions for Operational System and Configuration building blocks. Resources combined with States and Transports they enable us to build all kinds of automation and verification needed.
+
+- **File** - Files, directories, templates (based on Jinja2)
 - **Package** - apt, dnf, pacman, brew
 - **Service** - systemd, launchctl
-- **Exec** - Commands with idempotency guards
+- **Exec** - Execute commands with safety guards
 
 ## Commands
 
@@ -96,11 +98,18 @@ cook state history <resource>   # Show change history
 cook state drift                # Show drifted resources
 cook check-drift                # Detect drift
 cook check-drift --fix          # Fix drift
-sudo cook record start          # Start recording
+sudo cook record start          # Start recording (requires pty access)
 cook record generate <file>     # Generate config from recording
 ```
 
 ## SSH Transport
+
+
+Commands can be applied locally or remotely. The locality abstraction is named `Transport`. The most used `Transport` is based on SSH. 
+
+You could either install `cook` and your programs on a server and run it locally - enforcing a periodic drift check by cron and emulating a traditional configuration management approach - or run it remotely through SSH more in a image creation fashion like `Ansible`.
+
+Apart from that, the difference would be where the state is stored.
 
 ```bash
 cook plan server.py --host example.com --user admin --sudo
@@ -140,6 +149,8 @@ See [examples/README.md](examples/README.md).
 
 ## Comparison
 
+The chart below is not a benchmark or a pros/cons comparison. It is a radar of where cook sits. All these frameworks are established, have companies behind them and serve thousands of Enterprise customers to their merit.
+
 | Feature         | Cook   | Ansible | Pyinfra | Terraform |
 | --------------- | ------ | ------- | ------- | --------- |
 | Language        | Python | YAML    | Python  | HCL       |
@@ -147,7 +158,7 @@ See [examples/README.md](examples/README.md).
 | Recording Mode  | Yes    | No      | No      | No        |
 | AI Integration  | Yes    | No      | No      | No        |
 
-## Status
+## Project Status
 
 Beta. All core and advanced features implemented:
 
