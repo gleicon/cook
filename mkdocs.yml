@@ -1,0 +1,88 @@
+site_name: Cook
+site_description: Configuration management in Python for the Impatient
+site_author: Cook Contributors
+site_url: https://github.com/gleicon/cook
+
+repo_name: gleicon/cook
+repo_url: https://github.com/gleicon/cook
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Core Concepts: getting-started/concepts.md
+  - Resources:
+    - Overview: resources/index.md
+    - File: resources/file.md
+    - Package: resources/package.md
+    - Repository: resources/repository.md
+    - Service: resources/service.md
+    - Exec: resources/exec.md
+  - Examples:
+    - Minimidia SaaS: examples/minimidia.md
+  - API Reference:
+    - Core API: api/core.md
+    - Resources API: api/resources.md
+    - Transport API: api/transport.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/gleicon/cook
