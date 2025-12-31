@@ -58,11 +58,16 @@ print("Phase 1: System Updates & Repository Setup")
 Repository("apt-update", action="update")
 Repository("apt-upgrade", action="upgrade")
 
-# Install Node.js from NodeSource using their official setup script
-# The script automatically installs the package
+# Install Node.js and npm from NodeSource using their official setup script
+# Note: npm is included in the nodejs package from NodeSource
 Exec(
     "nodesource-setup",
-    command=f"curl -fsSL https://deb.nodesource.com/setup_{NODE_VERSION} | bash - && apt-get install -y nodejs",
+    command=f"""
+curl -fsSL https://deb.nodesource.com/setup_{NODE_VERSION} | bash -
+apt-get install -y nodejs
+# Verify npm is installed, if not install it separately
+which npm || apt-get install -y npm
+""",
     unless="which node && which npm",
     safe_mode=False,
     security_level="none"
