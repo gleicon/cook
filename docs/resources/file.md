@@ -518,6 +518,55 @@ File(
 )
 ```
 
+### Multi-Phase Configuration (Resource Redefinition)
+
+Progressive configuration where files evolve through deployment phases:
+
+```python
+from cook import File, Exec
+
+# Phase 1: Initial configuration (HTTP-only for Let's Encrypt)
+File(
+    "/etc/nginx/sites-available/mysite.com",
+    template="./nginx.conf.j2",
+    vars={
+        "domain": "mysite.com",
+        "ssl_enabled": False
+    }
+)
+
+# Obtain SSL certificate using HTTP-01 challenge
+Exec(
+    "certbot-obtain",
+    command="certbot certonly --nginx -d mysite.com ...",
+    creates="/etc/letsencrypt/live/mysite.com/fullchain.pem"
+)
+
+# Phase 2: Update configuration with SSL (replaces Phase 1)
+File(
+    "/etc/nginx/sites-available/mysite.com",
+    template="./nginx.conf.j2",
+    vars={
+        "domain": "mysite.com",
+        "ssl_enabled": True
+    }
+)
+```
+
+**How it works:**
+- When the same file path is defined multiple times, the last definition wins
+- Execution order is preserved (file maintains its original position)
+- No temporary files or workarounds needed
+- Enables natural expression of multi-phase workflows
+
+**Use cases:**
+- TLS certificate setup (HTTP → HTTPS)
+- Database initialization (setup → production configs)
+- Progressive feature enablement
+- Conditional configuration updates
+
+See `examples/minimidia/minimidia.py` for a complete real-world example.
+
 ## API Reference
 
 See [cook/resources/file.py](https://github.com/gleicon/cook/blob/main/cook/resources/file.py) for complete source code and implementation details.

@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Resource redefinition support**: Fixed duplicate resource error when the same resource path is defined multiple times
+  - Executor now implements "last definition wins" semantics
+  - Enables multi-phase configurations (e.g., HTTP → HTTPS nginx config)
+  - Maintains execution order when resources are replaced
+  - Added comprehensive unit tests in `tests/unit/test_executor.py`
+  - See `examples/minimidia/minimidia.py` for real-world usage
+
 ### Added
 
 - SSH transport layer (Paramiko-based) 

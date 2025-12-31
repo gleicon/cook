@@ -31,6 +31,53 @@ sudo cook apply examples/web-server.py
 
 ## Stack Examples
 
+### minimidia/ (SaaS Infrastructure)
+
+**Complete production-ready SaaS infrastructure** with Node.js, Nginx, TLS, Docker, and monitoring.
+
+**Features:**
+- Multi-phase nginx configuration (HTTP → HTTPS)
+- Automatic Let's Encrypt TLS certificates
+- Systemd service management
+- Docker and Docker Compose
+- Security hardening
+- Log rotation and monitoring
+
+**Demonstrates:**
+- **Resource redefinition pattern** for progressive configuration
+- Repository management (NodeSource, Docker)
+- Template-based configuration with Jinja2
+- Service reload triggers
+- Security best practices
+
+```bash
+export DOMAIN=minimidia.com
+export ADMIN_EMAIL=admin@minimidia.com
+sudo cook plan minimidia/minimidia.py
+sudo cook apply minimidia/minimidia.py --yes
+```
+
+**Key Pattern: Multi-Phase TLS Setup**
+
+The minimidia example showcases Cook's resource redefinition feature:
+
+```python
+# Phase 1: HTTP config (for Let's Encrypt verification)
+File(f"/etc/nginx/sites-available/{DOMAIN}",
+     template="nginx.conf.j2",
+     vars={"ssl_enabled": False})
+
+# Obtain certificate
+Exec("certbot", command="certbot certonly --nginx ...")
+
+# Phase 2: Update to HTTPS (replaces previous definition)
+File(f"/etc/nginx/sites-available/{DOMAIN}",
+     template="nginx.conf.j2",
+     vars={"ssl_enabled": True})
+```
+
+See [minimidia/README.md](minimidia/README.md) for complete documentation.
+
 ### lemp-stack.py
 
 LEMP stack: Linux, Nginx, MySQL, PHP-FPM
@@ -78,6 +125,41 @@ cook apply multi-server/database.py --host db.example.com --user admin --sudo
 See [multi-server/README.md](multi-server/README.md).
 
 ## Patterns
+
+### Resource Redefinition (Multi-Phase Configurations)
+
+Progressive refinement where resources evolve through deployment phases:
+
+```python
+from cook import File, Exec
+
+# Phase 1: Initial state
+File("/etc/app/config.conf",
+     template="config.j2",
+     vars={"mode": "setup"})
+
+# Intermediate operation
+Exec("initialize", command="./setup.sh")
+
+# Phase 2: Final state (replaces Phase 1 definition)
+File("/etc/app/config.conf",
+     template="config.j2",
+     vars={"mode": "production"})
+```
+
+**When to use:**
+- TLS certificate workflows (HTTP → HTTPS)
+- Database initialization (setup → production modes)
+- Progressive feature enablement
+- Conditional configuration updates
+
+**How it works:**
+- Same resource path defined multiple times
+- Last definition wins
+- Execution order preserved
+- No temporary files needed
+
+See `minimidia/minimidia.py` for real-world example.
 
 ### Functions
 

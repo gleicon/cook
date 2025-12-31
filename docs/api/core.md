@@ -344,6 +344,61 @@ File("/etc/motd", content="Welcome")
 executor.add(resource)
 ```
 
+### Resource Redefinition (Last Definition Wins)
+
+When a resource with the same ID is added multiple times, **the last definition replaces previous ones**. This enables multi-phase configurations:
+
+```python
+from cook import File, Exec
+
+# Phase 1: HTTP-only nginx config
+File(
+    "/etc/nginx/sites-available/mysite.com",
+    template="nginx.conf.j2",
+    vars={"ssl_enabled": False}
+)
+
+# Obtain SSL certificate
+Exec(
+    "certbot",
+    command="certbot certonly --nginx -d mysite.com ...",
+    creates="/etc/letsencrypt/live/mysite.com/fullchain.pem"
+)
+
+# Phase 2: Update to HTTPS config (replaces Phase 1 definition)
+File(
+    "/etc/nginx/sites-available/mysite.com",
+    template="nginx.conf.j2",
+    vars={"ssl_enabled": True}
+)
+```
+
+**Behavior:**
+- Resource ID is based on type and path: `file:/etc/nginx/sites-available/mysite.com`
+- When the same ID is added again, it replaces the previous definition
+- **Execution order is preserved** - the resource maintains its original position
+- Only the final (last) definition is used during plan/apply
+- This matches behavior of mature IaC tools like Puppet and Ansible
+
+**Use Cases:**
+- Progressive refinement (HTTP → HTTPS configurations)
+- Multi-phase deployments requiring different states
+- Certificate management workflows
+- Conditional configuration updates
+
+**Example with Order Preservation:**
+
+```python
+File("/etc/app/config1.conf", content="first")
+File("/etc/app/config2.conf", content="second")  # Position 2
+File("/etc/app/config3.conf", content="third")
+
+# Update config2 - it stays at position 2 in execution order
+File("/etc/app/config2.conf", content="second updated")
+```
+
+Execution order: config1 → config2 (updated) → config3
+
 ### Execute Resources
 
 ```python

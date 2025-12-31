@@ -139,6 +139,44 @@ site_conf = File("/etc/nginx/sites-available/mysite", source="./site.conf")
 Service("nginx", running=True, reload_on=[nginx_conf, site_conf])
 ```
 
+## Resource Redefinition (Multi-Phase Configurations)
+
+Cook supports redefining resources at different phases of deployment. When a resource with the same path is defined multiple times, the **last definition wins**, enabling progressive refinement patterns.
+
+**Use Case:** TLS certificate setup requires different nginx configurations at different phases:
+
+```python
+from cook import File, Exec
+
+# Phase 1: HTTP-only config (for Let's Encrypt verification)
+File(
+    "/etc/nginx/sites-available/mysite.com",
+    template="nginx.conf.j2",
+    vars={"ssl_enabled": False}
+)
+
+# Obtain certificate using HTTP-01 challenge
+Exec(
+    "certbot-obtain",
+    command="certbot certonly --nginx -d mysite.com ...",
+    creates="/etc/letsencrypt/live/mysite.com/fullchain.pem"
+)
+
+# Phase 2: Update config to enable HTTPS (replaces previous definition)
+File(
+    "/etc/nginx/sites-available/mysite.com",
+    template="nginx.conf.j2",
+    vars={"ssl_enabled": True}
+)
+```
+
+**Key Benefits:**
+- **Natural workflow expression**: No workarounds or temporary file names needed
+- **Maintains execution order**: Resource position is preserved even when redefined
+- **Idiomatic pattern**: Matches behavior of mature IaC tools (Puppet, Ansible)
+
+**See:** `examples/minimidia/minimidia.py` for a complete real-world example.
+
 ## Repository Management
 
 Manage package repositories, system updates, and package manager operations:

@@ -40,6 +40,53 @@ Alternatively, create your own server.js that matches your application requireme
 - `minimidia.service` - Systemd service definition
 - `nginx.conf.j2` - Nginx configuration template
 
+## Key Techniques
+
+### Multi-Phase Nginx Configuration
+
+This example demonstrates Cook's **resource redefinition** feature for TLS certificate setup:
+
+**Phase 1: HTTP-only Configuration**
+```python
+File(
+    f"/etc/nginx/sites-available/{DOMAIN}",
+    template="./files/nginx.conf.j2",
+    vars={"ssl_enabled": False}  # HTTP only
+)
+```
+
+**Phase 2: Obtain Certificate**
+```python
+Exec(
+    "certbot-obtain-certificate",
+    command=f"certbot certonly --nginx -d {DOMAIN} ...",
+    creates=f"/etc/letsencrypt/live/{DOMAIN}/fullchain.pem"
+)
+```
+
+**Phase 3: Update to HTTPS** (replaces Phase 1 definition)
+```python
+File(
+    f"/etc/nginx/sites-available/{DOMAIN}",
+    template="./files/nginx.conf.j2",
+    vars={"ssl_enabled": True}  # HTTPS enabled
+)
+```
+
+This pattern is necessary because:
+- Let's Encrypt HTTP-01 challenge requires HTTP access
+- After obtaining certificate, nginx should enforce HTTPS
+- Resource redefinition allows natural workflow expression
+- No temporary files or workarounds needed
+
+**How it works:**
+- Cook's executor implements "last definition wins" semantics
+- When the same resource path is defined twice, the final definition is used
+- Execution order is preserved (nginx config stays at its original position)
+- The final state has HTTPS enabled after certificate is obtained
+
+See the main README for more information on resource redefinition.
+
 ## Environment Variables
 
 - `DOMAIN` - Your domain name (default: minimidia.com)
