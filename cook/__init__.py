@@ -5,6 +5,7 @@ from cook.resources.file import File
 from cook.resources.pkg import Package
 from cook.resources.service import Service
 from cook.resources.exec import Exec
+from cook.resources.repository import Repository
 from cook.logging import get_logger, get_cook_logger, setup_logging
 
 """
@@ -16,6 +17,7 @@ Foundations of Cook Workflows:
     Package is a unit of configuration that represents a desired state of a package.
     Service is a unit of configuration that represents a desired state of a service.
     Exec is a unit of configuration that represents a desired state of an executable.
+    Repository is a unit of configuration that represents a desired state of a package repository.
 """
 
 __all__ = [
@@ -26,6 +28,7 @@ __all__ = [
     "Package",
     "Service",
     "Exec",
+    "Repository",
     "get_logger",
     "get_cook_logger",
     "setup_logging",

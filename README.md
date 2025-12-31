@@ -29,6 +29,7 @@ It works for containers, for big servers and for fleet of virtual machines all t
 - Action is a unit of work that can be performed on a resource.
 - File is a unit of configuration that represents a desired state of a file.
 - Package is a unit of configuration that represents a desired state of a package.
+  - Repository is a support of the Package system, it represents system updates and repository management
 - Service is a unit of configuration that represents a desired state of a service.
 - Exec is a unit of configuration that represents a desired state of an executable.
 
@@ -38,6 +39,7 @@ Resources are abstractions for Operational System and Configuration building blo
 
 - **File** - Files, directories, templates (based on Jinja2)
 - **Package** - apt, dnf, pacman, brew
+- **Repository** - Package repositories, system updates, and repository management
 - **Service** - systemd, launchctl
 - **Exec** - Execute commands with safety guards
 
@@ -137,6 +139,69 @@ site_conf = File("/etc/nginx/sites-available/mysite", source="./site.conf")
 Service("nginx", running=True, reload_on=[nginx_conf, site_conf])
 ```
 
+## Repository Management
+
+Manage package repositories, system updates, and package manager operations:
+
+```python
+from cook import Repository, Package
+
+# Update package cache
+Repository("apt-update", action="update")
+
+# Upgrade all packages
+Repository("apt-upgrade", action="upgrade")
+
+# Example: Add NodeSource repository for Node.js
+Repository(
+    "nodesource",
+    action="add",
+    repo="deb https://deb.nodesource.com/node_20.x nodistro main",
+    key_url="https://deb.nodesource.com/gpgkey/nodesource.gpg.key",
+    filename="nodesource.list"
+)
+
+# Example: Add Docker repository
+Repository(
+    "docker",
+    action="add",
+    repo="deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable",
+    key_url="https://download.docker.com/linux/ubuntu/gpg",
+    filename="docker.list"
+)
+
+# Update cache after adding repositories
+Repository("apt-update-repos", action="update")
+
+# Now install packages from the new repositories
+Package("nodejs")
+Package("docker-ce")
+```
+
+### Repository Actions
+
+- **update**: Update package cache (apt-get update, dnf check-update, etc.)
+- **upgrade**: Upgrade all packages (apt-get upgrade, dnf upgrade, etc.)
+- **add**: Add a new repository with optional GPG key
+
+### Supported Package Managers
+
+- **apt** (Debian/Ubuntu): Full support for repositories, keys, and PPAs
+- **dnf** (Fedora/RHEL): Repository management with GPG keys
+- **pacman** (Arch Linux): Repository configuration
+- **brew** (macOS): Tap management
+
+### Ubuntu PPAs
+
+```python
+# Add a PPA (Ubuntu/Debian)
+Repository(
+    "ondrej-php",
+    action="add",
+    ppa="ppa:ondrej/php"
+)
+```
+
 ## Testing
 
 ```bash
@@ -151,6 +216,8 @@ See [tests/README.md](tests/README.md).
 
 - **simple.py** - Basic file operations
 - **lemp-stack.py** - LEMP stack (Linux, Nginx, MySQL, PHP)
+- **minimidia.py** - Complete SaaS infrastructure with Node.js, Nginx, TLS, Docker
+- **minimidia-env.py** - Multi-environment deployment (dev/staging/prod)
 - **wordpress.py** - WordPress with MySQL
 - **wordpress-pgsql.py** - WordPress with PostgreSQL
 - **multi-server/database.py** - PostgreSQL database server

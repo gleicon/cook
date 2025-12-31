@@ -10,7 +10,7 @@ sudo pytest tests/integration/      # Integration tests
 
 ## Structure
 
-```
+```sh
 tests/
 ├── unit/                   # Fast, isolated tests
 ├── integration/            # System tests (requires sudo)
@@ -104,6 +104,7 @@ pytest tests/ --cov=cook --cov-report=term-missing
 ## Performance
 
 Target times:
+
 - Unit tests: < 10 seconds
 - Integration tests: < 2 minutes
 - VM tests: < 10 minutes
@@ -125,6 +126,7 @@ pytest -m "not slow"
 ## Coverage
 
 Minimum targets:
+
 - Core resources: 80%
 - CLI: 70%
 - Overall: 75%
