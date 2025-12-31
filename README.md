@@ -22,6 +22,25 @@ There is also a MCP server which can be configured on your preferred coding agen
 
 It works for containers, for big servers and for fleet of virtual machines all the same. Being a python application opens up to integration, better observability and drift control and translator of other frameworks and configurations.
 
+## Foundations of Cook Workflows:
+
+- Resource is a unit of configuration that represents a desired state of a system.
+- Plan is a collection of resources that represent a desired state of a system.
+- Action is a unit of work that can be performed on a resource.
+- File is a unit of configuration that represents a desired state of a file.
+- Package is a unit of configuration that represents a desired state of a package.
+- Service is a unit of configuration that represents a desired state of a service.
+- Exec is a unit of configuration that represents a desired state of an executable.
+
+### Core Resources
+
+Resources are abstractions for Operational System and Configuration building blocks. Technically speaking:
+
+- **File** - Files, directories, templates (based on Jinja2)
+- **Package** - apt, dnf, pacman, brew
+- **Service** - systemd, launchctl
+- **Exec** - Execute commands with safety guards
+
 ## Features
 
 - Pure Python configuration (no YAML/DSL)
@@ -77,15 +96,6 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[all]"
 ```
-
-## Core Resources
-
-Resources are abstractions for Operational System and Configuration building blocks. Resources combined with States and Transports they enable us to build all kinds of automation and verification needed.
-
-- **File** - Files, directories, templates (based on Jinja2)
-- **Package** - apt, dnf, pacman, brew
-- **Service** - systemd, launchctl
-- **Exec** - Execute commands with safety guards
 
 ## Commands
 

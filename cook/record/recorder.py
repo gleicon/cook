@@ -232,7 +232,6 @@ class RecordingSession:
     def start(self):
         """Start recording session."""
         logger.info("Cook recording session")
-        logger.separator("=", 50)
 
         # Start filesystem watcher if available
         try:

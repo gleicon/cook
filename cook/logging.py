@@ -1,8 +1,5 @@
 """
-Centralized logging for Cook.
-
-Provides structured logging with rich formatting, replacing print/printf/ANSI statements.
-Supports multiple log levels, colored output, and context-aware formatting.
+Logging for Cook.
 
 Example:
     from cook.logging import get_logger
@@ -51,7 +48,7 @@ def setup_logging(
     rich_tracebacks: bool = True,
 ) -> None:
     """
-    Initialize Cook's logging system.
+    init Cook's logging
 
     Args:
         level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
@@ -101,7 +98,7 @@ def setup_logging(
 
 def get_logger(name: str) -> logging.Logger:
     """
-    Get a logger instance for the given module.
+    Get a logger instance for a given module.
 
     Args:
         name: Logger name (typically __name__)
@@ -122,7 +119,7 @@ def get_logger(name: str) -> logging.Logger:
 
 class CookLogger:
     """
-    Enhanced logger with Cook-specific formatting methods.
+    Cook-specific logger
 
     Wraps standard logger with convenience methods for common Cook operations.
     """
@@ -194,13 +191,13 @@ class CookLogger:
 
     def security_warning(self, message: str, resource: Optional[str] = None) -> None:
         """
-        Log security warning with prominent formatting.
+        Log security warning
 
         Args:
             message: Security warning message
             resource: Optional resource name
         """
-        separator = "=" * 70
+        separator = "-" * 70
         header = f"\n{separator}\n"
         header += "SECURITY WARNING"
         if resource:
@@ -213,7 +210,7 @@ class CookLogger:
 
     def dry_run(self, message: str) -> None:
         """
-        Log dry-run message.
+        Log dry-run 
 
         Args:
             message: Dry-run message to display
@@ -254,17 +251,6 @@ class CookLogger:
             row = "  ".join(str(col) for col in columns)
 
         self.console.print(row)
-
-    def separator(self, char: str = "-", length: int = 80) -> None:
-        """
-        Print a separator line.
-
-        Args:
-            char: Character to use for separator
-            length: Length of separator
-        """
-        self.console.print(char * length)
-
 
 # Convenience function to get CookLogger
 def get_cook_logger(name: str) -> CookLogger:
