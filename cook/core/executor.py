@@ -110,6 +110,10 @@ class Executor:
         """
         Add resource to executor.
 
+        If a resource with the same ID already exists, it will be replaced
+        (last definition wins). This allows progressive refinement where
+        resources can be redefined at different phases.
+
         Args:
             resource: Resource instance
 
@@ -120,13 +124,21 @@ class Executor:
             This method sets the transport on the resource, which is required
             before any operations (check/plan/apply) can be performed.
         """
-        if resource.id in self._registry:
-            raise ValueError(f"Duplicate resource: {resource.id}")
-
         # Set transport on resource
         resource._transport = self.transport
 
-        self.resources.append(resource)
+        # Check if resource already exists
+        if resource.id in self._registry:
+            # Replace existing resource in-place (maintain order)
+            for i, res in enumerate(self.resources):
+                if res.id == resource.id:
+                    self.resources[i] = resource
+                    break
+        else:
+            # New resource - append to list
+            self.resources.append(resource)
+
+        # Update registry (always overwrites)
         self._registry[resource.id] = resource
         return resource
 

@@ -31,6 +31,7 @@ Environment Variables:
 from cook import File, Package, Service, Exec, Repository
 import os
 
+
 # Configuration
 DOMAIN = os.getenv("DOMAIN", "minimidia.com")
 APP_DIR = "/opt/apps/minimidia"
@@ -157,6 +158,7 @@ Service("minimidia", running=True, enabled=True)
 # Phase 6: Nginx Configuration
 print("Phase 6: Nginx Reverse Proxy Configuration")
 
+# Create initial HTTP-only nginx config for certbot verification
 nginx_conf = File(
     f"/etc/nginx/sites-available/{DOMAIN}",
     template="./files/nginx.conf.j2",
@@ -191,7 +193,7 @@ Exec(
     creates=f"/etc/letsencrypt/live/{DOMAIN}/fullchain.pem"
 )
 
-# Update Nginx with TLS configuration
+# Update Nginx with TLS configuration after certificate is obtained
 File(
     f"/etc/nginx/sites-available/{DOMAIN}",
     template="./files/nginx.conf.j2",
@@ -206,7 +208,8 @@ File(
     group="root"
 )
 
-Exec("nginx-reload-tls", command="nginx -t && systemctl reload nginx", unless="nginx -t 2>&1 | grep -q successful && systemctl is-active nginx")
+Exec("test-nginx-tls", command="nginx -t")
+Service("nginx", running=True, enabled=True, reload=True)
 
 # Phase 8: Docker Configuration
 print("Phase 8: Docker Configuration")
@@ -215,7 +218,7 @@ Service("docker", running=True, enabled=True)
 
 Exec("docker-group-www-data", command="usermod -aG docker www-data", unless="groups www-data | grep -q docker")
 
-Exec("docker-buildx-setup", command="docker buildx create --use --name minimidia-builder 2>/dev/null || true", unless="docker buildx ls | grep -q minimidia-builder")
+Exec("docker-buildx-setup", command="docker buildx create --use --name minimidia-builder 2>/dev/null || true", unless="docker buildx ls | grep -q minimidia-builder", safe_mode=False, security_level="none")
 
 # Phase 9: Security & System Hardening
 print("Phase 9: Security & System Hardening")
