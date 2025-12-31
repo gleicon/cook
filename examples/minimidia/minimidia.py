@@ -58,15 +58,21 @@ print("Phase 1: System Updates & Repository Setup")
 Repository("apt-update", action="update")
 Repository("apt-upgrade", action="upgrade")
 
+# Remove old Node.js if wrong version installed
+Exec(
+    "remove-old-nodejs",
+    command="apt-get remove -y nodejs npm",
+    only_if=f"node --version 2>/dev/null | grep -qv '^v{NODE_MAJOR}\\.'",
+    safe_mode=False,
+    security_level="none"
+)
+
 # Install Node.js and npm from NodeSource using their official setup script
-# Note: npm is included in the nodejs package from NodeSource
 Exec(
     "nodesource-setup",
     command=f"""
 curl -fsSL https://deb.nodesource.com/setup_{NODE_MAJOR}.x | bash -
 apt-get install -y nodejs
-# Verify npm is installed, if not install it separately
-which npm || apt-get install -y npm
 """,
     unless=f"node --version 2>/dev/null | grep -q '^v{NODE_MAJOR}\\.' && which npm",
     safe_mode=False,
