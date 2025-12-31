@@ -62,7 +62,7 @@ Repository("apt-upgrade", action="upgrade")
 Exec(
     "nodesource-setup",
     command=f"curl -fsSL https://deb.nodesource.com/setup_{NODE_VERSION} | bash -",
-    unless="test -f /etc/apt/sources.list.d/nodesource.list && dpkg -l nodejs 2>/dev/null | grep -q '^ii'",
+    unless="dpkg -l nodejs 2>/dev/null | grep -q '^ii'",
     safe_mode=False,
     security_level="none"
 )
@@ -81,6 +81,7 @@ Repository("apt-update-after-repos", action="update")
 print("Phase 2: Core Package Installation")
 
 Package("nginx")
+# NodeSource setup script installs nodejs automatically, but ensure it's present
 Package("nodejs")
 Package("certbot", packages=["certbot", "python3-certbot-nginx"])
 Package("docker", packages=[
@@ -194,35 +195,39 @@ Service("nginx", running=True, enabled=True, reload_on=[nginx_conf])
 
 # Phase 7: Let's Encrypt TLS Certificate
 print("Phase 7: Let's Encrypt TLS Certificate Setup")
+print("NOTE: Certbot requires DNS to be properly configured.")
+print("      In test environments without real DNS, certbot will fail (expected).")
+print("      The application will still work with HTTP-only configuration.")
 
-# NOTE: Certbot will fail if domain doesn't resolve to this server
-# For testing without real DNS, skip this phase or use --dry-run
+# Obtain SSL certificate (will fail without proper DNS)
 Exec(
     "certbot-obtain-certificate",
-    command=f"certbot certonly --nginx -d {DOMAIN} --non-interactive --agree-tos --email {ADMIN_EMAIL} --deploy-hook 'systemctl reload nginx' --cert-name {DOMAIN}",
+    command=f"certbot certonly --nginx -d {DOMAIN} --non-interactive --agree-tos --email {ADMIN_EMAIL} --cert-name {DOMAIN}",
     creates=f"/etc/letsencrypt/live/{DOMAIN}/fullchain.pem",
     safe_mode=False,
     security_level="none"
 )
 
-# Update Nginx with TLS configuration after certificate is obtained
-# This replaces the HTTP-only config from Phase 6
-File(
-    f"/etc/nginx/sites-available/{DOMAIN}",
-    template=os.path.join(FILES_DIR, "nginx.conf.j2"),
-    vars={
-        "domain": DOMAIN,
-        "app_port": APP_PORT,
-        "app_dir": APP_DIR,
-        "ssl_enabled": True
-    },
-    mode=0o644,
-    owner="root",
-    group="root"
-)
-
-# Reload nginx with TLS config (only if certificate was obtained)
-Service("nginx", running=True, enabled=True)
+# Only update to HTTPS config if certificate exists
+# This is conditional - won't replace HTTP config if certbot failed
+if os.path.exists(f"/etc/letsencrypt/live/{DOMAIN}/fullchain.pem"):
+    print(f"  SSL certificates found - enabling HTTPS for {DOMAIN}")
+    File(
+        f"/etc/nginx/sites-available/{DOMAIN}",
+        template=os.path.join(FILES_DIR, "nginx.conf.j2"),
+        vars={
+            "domain": DOMAIN,
+            "app_port": APP_PORT,
+            "app_dir": APP_DIR,
+            "ssl_enabled": True
+        },
+        mode=0o644,
+        owner="root",
+        group="root"
+    )
+    Service("nginx", running=True, enabled=True)
+else:
+    print(f"  No SSL certificates - {DOMAIN} will use HTTP-only configuration")
 
 # Phase 8: Docker Configuration
 print("Phase 8: Docker Configuration")
