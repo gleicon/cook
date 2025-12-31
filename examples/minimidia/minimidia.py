@@ -40,7 +40,7 @@ DOMAIN = os.getenv("DOMAIN", "minimidia.com")
 APP_DIR = "/opt/apps/minimidia"
 APP_PORT = int(os.getenv("APP_PORT", "3000"))
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@minimidia.com")
-NODE_VERSION = "20.x"
+NODE_MAJOR = "20"  # Node.js major version
 
 print("=" * 75)
 print("    Minimidia SaaS Infrastructure Deployment")
@@ -49,7 +49,7 @@ print(f"  Domain:       {DOMAIN}")
 print(f"  App Dir:      {APP_DIR}")
 print(f"  App Port:     {APP_PORT}")
 print(f"  Admin Email:  {ADMIN_EMAIL}")
-print(f"  Node Version: {NODE_VERSION}")
+print(f"  Node Version: {NODE_MAJOR}.x")
 print()
 
 # Phase 1: System Updates & Repository Setup
@@ -63,12 +63,12 @@ Repository("apt-upgrade", action="upgrade")
 Exec(
     "nodesource-setup",
     command=f"""
-curl -fsSL https://deb.nodesource.com/setup_{NODE_VERSION} | bash -
+curl -fsSL https://deb.nodesource.com/setup_{NODE_MAJOR}.x | bash -
 apt-get install -y nodejs
 # Verify npm is installed, if not install it separately
 which npm || apt-get install -y npm
 """,
-    unless="which node && which npm",
+    unless=f"node --version 2>/dev/null | grep -q '^v{NODE_MAJOR}\\.' && which npm",
     safe_mode=False,
     security_level="none"
 )
@@ -96,7 +96,16 @@ Package("docker", packages=[
     "docker-buildx-plugin",
 ])
 Package("sqlite", packages=["sqlite3", "libsqlite3-dev"])
-Package("build-essential", packages=["build-essential", "python3", "make", "g++"])
+# Build tools for native Node.js modules (like better-sqlite3)
+Package("build-essential", packages=[
+    "build-essential",
+    "python3",
+    "python3-setuptools",
+    "python3-pip",
+    "make",
+    "g++",
+    "gyp"
+])
 Package("utilities", packages=["curl", "wget", "git", "htop", "tree", "jq"])
 
 # Phase 3: Application Directory Structure
