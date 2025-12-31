@@ -59,10 +59,11 @@ Repository("apt-update", action="update")
 Repository("apt-upgrade", action="upgrade")
 
 # Install Node.js from NodeSource using their official setup script
+# The script automatically installs the package
 Exec(
     "nodesource-setup",
-    command=f"curl -fsSL https://deb.nodesource.com/setup_{NODE_VERSION} | bash -",
-    unless="dpkg -l nodejs 2>/dev/null | grep -q '^ii'",
+    command=f"curl -fsSL https://deb.nodesource.com/setup_{NODE_VERSION} | bash - && apt-get install -y nodejs",
+    unless="which node && which npm",
     safe_mode=False,
     security_level="none"
 )
@@ -81,8 +82,6 @@ Repository("apt-update-after-repos", action="update")
 print("Phase 2: Core Package Installation")
 
 Package("nginx")
-# NodeSource setup script installs nodejs automatically, but ensure it's present
-Package("nodejs")
 Package("certbot", packages=["certbot", "python3-certbot-nginx"])
 Package("docker", packages=[
     "docker-ce",
@@ -140,10 +139,18 @@ LOG_LEVEL=info
     group="www-data"
 )
 
+# Verify Node.js and npm are available before proceeding
+Exec(
+    "verify-nodejs",
+    command="node --version && npm --version",
+    safe_mode=False,
+    security_level="none"
+)
+
 Exec(
     "npm-install",
     command=f"cd {APP_DIR} && npm install --production --no-audit --no-fund",
-    unless=f"test -d {APP_DIR}/node_modules && test -f {APP_DIR}/node_modules/.package-lock.json",
+    unless=f"test -d {APP_DIR}/node_modules",
     environment={"NODE_ENV": "production"},
     safe_mode=False,
     security_level="none"
