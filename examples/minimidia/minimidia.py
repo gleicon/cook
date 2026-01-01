@@ -58,23 +58,25 @@ print("Phase 1: System Updates & Repository Setup")
 Repository("apt-update", action="update")
 Repository("apt-upgrade", action="upgrade")
 
-# Remove old Node.js if wrong version installed
+# Install Node.js v20.x from NodeSource
+# This will upgrade from any older version
 Exec(
-    "remove-old-nodejs",
-    command="apt-get remove -y nodejs npm",
-    only_if=f"node --version 2>/dev/null | grep -qv '^v{NODE_MAJOR}\\.'",
-    safe_mode=False,
-    security_level="none"
-)
-
-# Install Node.js and npm from NodeSource using their official setup script
-Exec(
-    "nodesource-setup",
+    "install-nodejs-20",
     command=f"""
+# Remove old versions and clean up
+apt-get remove -y nodejs npm || true
+apt-get autoremove -y
+rm -rf /usr/lib/node_modules /usr/local/lib/node_modules ~/.npm
+
+# Install Node.js 20.x from NodeSource
 curl -fsSL https://deb.nodesource.com/setup_{NODE_MAJOR}.x | bash -
 apt-get install -y nodejs
+
+# Verify installation
+node --version
+npm --version
 """,
-    unless=f"node --version 2>/dev/null | grep -q '^v{NODE_MAJOR}\\.' && which npm",
+    unless=f"node --version 2>/dev/null | grep -q '^v{NODE_MAJOR}\\.' && npm --version 2>/dev/null",
     safe_mode=False,
     security_level="none"
 )
@@ -167,10 +169,19 @@ Exec(
     security_level="none"
 )
 
+# Clean node_modules if it exists (in case Node.js version changed)
+Exec(
+    "clean-node-modules",
+    command=f"rm -rf {APP_DIR}/node_modules {APP_DIR}/package-lock.json",
+    only_if=f"test -d {APP_DIR}/node_modules && ! node --version | grep -q '^v{NODE_MAJOR}\\.'",
+    safe_mode=False,
+    security_level="none"
+)
+
 Exec(
     "npm-install",
     command=f"cd {APP_DIR} && npm install --production --no-audit --no-fund",
-    unless=f"test -d {APP_DIR}/node_modules",
+    unless=f"test -d {APP_DIR}/node_modules && node --version | grep -q '^v{NODE_MAJOR}\\.'",
     environment={"NODE_ENV": "production"},
     safe_mode=False,
     security_level="none"
